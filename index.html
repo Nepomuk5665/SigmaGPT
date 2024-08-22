@@ -1,30 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Chat with AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sigma GPT</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        #chat { width: 300px; height: 300px; border: 1px solid #ccc; padding: 10px; overflow-y: scroll; }
-        #message { width: calc(100% - 22px); }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            background-color: #fff;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-container h1 {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+
+        #chat {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 10px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            margin-bottom: 10px;
+        }
+
+        #chat div {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 75%;
+            clear: both;
+        }
+
+        #chat div:nth-child(odd) {
+            background-color: #e0e0e0;
+            float: left;
+        }
+
+        #chat div:nth-child(even) {
+            background-color: #007bff;
+            color: #fff;
+            float: right;
+        }
+
+        .message-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #message {
+            width: calc(100% - 60px);
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        @media screen and (max-width: 600px) {
+            .chat-container {
+                padding: 15px;
+                max-width: 100%;
+            }
+
+            #chat {
+                height: 250px;
+            }
+
+            #message {
+                font-size: 14px;
+            }
+
+            button {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
+
 <body>
-    <div id="chat"></div>
-    <input type="text" id="message" placeholder="Type your message here..." />
-    <button onclick="sendMessage()">Send</button>
+    <div class="chat-container">
+        <h1>Sigma GPT</h1>
+        <div id="chat"></div>
+        <div class="message-box">
+            <input type="text" id="message" placeholder="Type your message here..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
 
     <script>
         function sendMessage() {
             var input = document.getElementById('message');
             var chatBox = document.getElementById('chat');
             var userMessage = input.value;
-            input.value = ''; 
+            input.value = '';
 
-            
-            chatBox.innerHTML += '<div>User: ' + userMessage + '</div>';
+            if (userMessage.trim() === "") {
+                return;
+            }
 
-            
+            var userBubble = document.createElement('div');
+            userBubble.textContent = 'User: ' + userMessage;
+            chatBox.appendChild(userBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
             var data = JSON.stringify({
                 "model": "lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF",
                 "messages": [
@@ -36,7 +151,6 @@
                 "stream": true
             });
 
-            
             fetch('https://25cc-212-103-80-2.ngrok-free.app/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -44,31 +158,27 @@
                 },
                 body: data
             })
-            .then(response => response.body.getReader())
-            .then(reader => {
-                const tempResponseDiv = document.createElement("div");
-                chatBox.appendChild(tempResponseDiv);
-
-                
-                function read() {
-                    return reader.read().then(({ done, value }) => {
-                        if (done) {
-                            chatBox.scrollTop = chatBox.scrollHeight; 
-                            return;
-                        }
-                        let strChunk = new TextDecoder("utf-8").decode(value);
-                        
-                        processChunk(strChunk, tempResponseDiv);
-                        return read();
-                    });
-                }
-                read();
-            })
-            .catch(error => console.error('Error:', error));
+                .then(response => response.body.getReader())
+                .then(reader => {
+                    const tempResponseDiv = document.createElement("div");
+                    chatBox.appendChild(tempResponseDiv);
+                    function read() {
+                        return reader.read().then(({ done, value }) => {
+                            if (done) {
+                                chatBox.scrollTop = chatBox.scrollHeight;
+                                return;
+                            }
+                            let strChunk = new TextDecoder("utf-8").decode(value);
+                            processChunk(strChunk, tempResponseDiv);
+                            return read();
+                        });
+                    }
+                    read();
+                })
+                .catch(error => console.error('Error:', error));
         }
 
         function processChunk(chunk, element) {
-            
             chunk.replace(/data: /g, '').split('\n').forEach(line => {
                 if (line.trim()) {
                     try {
@@ -76,8 +186,7 @@
                         if (jsonLine.choices) {
                             jsonLine.choices.forEach(choice => {
                                 if (choice.delta && choice.delta.content) {
-                                    
-                                    const contentToAdd = choice.delta.content || ""; 
+                                    const contentToAdd = choice.delta.content || "";
                                     element.innerHTML += contentToAdd;
                                 }
                             });
@@ -89,8 +198,7 @@
             });
         }
 
-        
-        document.getElementById('message').addEventListener('keypress', function(e) {
+        document.getElementById('message').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 sendMessage();
                 e.preventDefault();
@@ -98,4 +206,5 @@
         });
     </script>
 </body>
+
 </html>
